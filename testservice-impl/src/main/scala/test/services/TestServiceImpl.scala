@@ -29,7 +29,14 @@ class TestServiceImpl()(
   val logger = Logger(getClass.getName)
 
   override def test(): ServiceCall[Source[String, NotUsed], ResultData] = ServiceCall{ source=>
-    source.runForeach(s=>logger.info(s"String $s")).map(_=>ResultData("TestResult", 12))
+    val result = source.runForeach(s=>logger.info(s"String $s")).map(_=>ResultData("TestResult", 12))
+    result.onSuccess{
+      case rd: ResultData => logger.info(s"Result data created $rd")
+    }
+    result.onFailure({
+      case t: Throwable => logger.error("Future failed", t)
+    })
+    result
   }
 }
 
