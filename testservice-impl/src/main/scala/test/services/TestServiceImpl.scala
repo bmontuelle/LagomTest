@@ -29,7 +29,11 @@ class TestServiceImpl()(
   val logger = Logger(getClass.getName)
 
   override def test(): ServiceCall[Source[String, NotUsed], ResultData] = ServiceCall{ source=>
-    val result = source.runForeach(s=>logger.info(s"String $s")).map(_=>ResultData("TestResult", 12))
+    val result = source.runForeach(s=>logger.info(s"String $s")).map(_=>{
+      val stackTrace = Thread.currentThread().getStackTrace().mkString("\n")
+      logger.info(s"Stack trace $stackTrace")
+      ResultData("TestResult", 12)
+    })
     result.onSuccess{
       case rd: ResultData => logger.info(s"Result data created $rd")
     }
