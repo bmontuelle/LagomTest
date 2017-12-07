@@ -1,9 +1,12 @@
 package testtest.services
 
+import java.io.File
+
 import akka.NotUsed
 import akka.event.slf4j.Logger
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import akka.stream.{IOResult, Materializer}
+import akka.stream.scaladsl.{FileIO, Keep, Source}
+import akka.util.ByteString
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
 import com.lightbend.lagom.scaladsl.api.{ServiceCall, ServiceLocator}
 import com.lightbend.lagom.scaladsl.broker.kafka.LagomKafkaComponents
@@ -16,11 +19,7 @@ import play.api.libs.ws.ahc.AhcWSComponents
 import test.services._
 
 import scala.collection.immutable.Seq
-import scala.concurrent.ExecutionContext
-/**
-  * Created by misher on 6/5/17.
-  */
-
+import scala.concurrent.{ExecutionContext, Future}
 
 class TestServiceImpl()(
   implicit val materializer: Materializer,
@@ -28,18 +27,28 @@ class TestServiceImpl()(
 ) extends TestService {
   val logger = Logger(getClass.getName)
 
-  override def test(): ServiceCall[Source[String, NotUsed], ResultData] = ServiceCall{ source=>
-    val result = source.runForeach(s=>logger.info(s"String $s")).map(_=>{
-      val stackTrace = Thread.currentThread().getStackTrace().mkString("\n")
-      logger.info(s"Stack trace $stackTrace")
-      ResultData("TestResult", 12)
-    })
+  override def test(): ServiceCall[Source[String, NotUsed], Source[String, NotUsed]] = ServiceCall { (source: Source[String, NotUsed]) =>
+    val outFile = new File(System.getProperty("java.io.tmpdir") + "/test.txt")
+
+    val sink = FileIO.toPath(outFile.toPath)
+
+    val result = source
+      .map(s => ByteString(s))
+      .toMat(sink)(Keep.right)
+      .mapMaterializedValue { (eventualIoResult: Future[IOResult]) =>
+        eventualIoResult.map { (ioRes: IOResult) =>
+          Source.single("fixed")
+        }
+      }
+      .run()
+
     result.onSuccess{
-      case rd: ResultData => logger.info(s"Result data created $rd")
+      case rd: Source[String, _] => logger.info(s"Result data created $rd")
     }
     result.onFailure({
       case t: Throwable => logger.error("Future failed", t)
     })
+
     result
   }
 }

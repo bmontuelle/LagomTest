@@ -6,7 +6,7 @@ import com.lightbend.lagom.scaladsl.api.{Service, ServiceCall}
 import play.api.libs.json.{Format, Json}
 
 trait TestService extends Service {
-  def test(): ServiceCall[Source[String, NotUsed], ResultData]
+  def test(): ServiceCall[Source[String, NotUsed], Source[String, NotUsed]]
 
   override final def descriptor = {
     import Service._
