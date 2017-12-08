@@ -7,6 +7,7 @@ import org.scalatest.{AsyncWordSpec, MustMatchers}
 import testtest.services.TestServiceApplication
 
 class TestServiceImplSpec extends AsyncWordSpec with MustMatchers {
+
   "TestService" should {
     "provide result" in ServiceTest.withServer(ServiceTest.defaultSetup) { ctx =>
       new TestServiceApplication(ctx) with LocalServiceLocator
@@ -16,7 +17,12 @@ class TestServiceImplSpec extends AsyncWordSpec with MustMatchers {
       implicit val mat = ActorMaterializer()
 
       val client = server.serviceClient.implement[TestService]
-      val src = Source("A"::"B"::"C"::Nil)
+
+      val src =
+        Source("A"::"B"::"C"::Nil)
+          .concat(Source.single("EOS"))
+          .concat(Source.maybe)
+
       val eventualSource = client.test().invoke(src)
       eventualSource.flatMap { src =>
         src.runWith(Sink.head).map { string =>
