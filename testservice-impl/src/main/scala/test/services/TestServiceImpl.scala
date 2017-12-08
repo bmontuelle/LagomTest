@@ -4,8 +4,8 @@ import java.io.File
 
 import akka.NotUsed
 import akka.event.slf4j.Logger
-import akka.stream.{IOResult, Materializer}
-import akka.stream.scaladsl.{FileIO, Keep, Source}
+import akka.stream.{IOResult, KillSwitches, Materializer}
+import akka.stream.scaladsl.{FileIO, Flow, Keep, Source}
 import akka.util.ByteString
 import com.lightbend.lagom.scaladsl.api.ServiceLocator.NoServiceLocator
 import com.lightbend.lagom.scaladsl.api.{ServiceCall, ServiceLocator}
@@ -32,15 +32,13 @@ class TestServiceImpl()(
 
     val sink = FileIO.toPath(outFile.toPath)
 
-    val result = source
-      .map(s => ByteString(s))
-      .toMat(sink)(Keep.right)
-      .mapMaterializedValue { (eventualIoResult: Future[IOResult]) =>
-        eventualIoResult.map { (ioRes: IOResult) =>
-          Source.single("fixed")
-        }
-      }
-      .run()
+val result =
+  source
+    .takeWhile(_ != "EOS")
+    .map { s => ByteString(s) }
+    .toMat(sink)(Keep.right)
+    .mapMaterializedValue { _.map { _ => Source.single("fixed") } }
+    .run()
 
     result.onSuccess{
       case rd: Source[String, _] => logger.info(s"Result data created $rd")
