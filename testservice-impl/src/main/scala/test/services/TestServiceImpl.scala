@@ -27,27 +27,13 @@ class TestServiceImpl()(
 ) extends TestService {
   val logger = Logger(getClass.getName)
 
-  override def test(): ServiceCall[Source[String, NotUsed], Source[String, NotUsed]] = ServiceCall { (source: Source[String, NotUsed]) =>
-    val outFile = new File(System.getProperty("java.io.tmpdir") + "/test.txt")
-
-    val sink = FileIO.toPath(outFile.toPath)
-
-val result =
-  source
-    .takeWhile(_ != "EOS")
-    .map { s => ByteString(s) }
-    .toMat(sink)(Keep.right)
-    .mapMaterializedValue { _.map { _ => Source.single("fixed") } }
-    .run()
-
-    result.onSuccess{
-      case rd: Source[String, _] => logger.info(s"Result data created $rd")
+  override def test(): ServiceCall[LookupQuery, Source[String, NotUsed]] = ServiceCall { (q: LookupQuery) =>
+    if (q.value == "fail") {
+      Future.failed(new IllegalArgumentException("query cannot equals 'fail'"))
     }
-    result.onFailure({
-      case t: Throwable => logger.error("Future failed", t)
-    })
-
-    result
+    else {
+      Future.successful(Source.single("fixed"))
+    }
   }
 }
 

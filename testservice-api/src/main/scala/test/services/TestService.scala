@@ -6,7 +6,7 @@ import com.lightbend.lagom.scaladsl.api.{Service, ServiceCall}
 import play.api.libs.json.{Format, Json}
 
 trait TestService extends Service {
-  def test(): ServiceCall[Source[String, NotUsed], Source[String, NotUsed]]
+  def test(): ServiceCall[LookupQuery, Source[String, NotUsed]]
 
   override final def descriptor = {
     import Service._
@@ -17,9 +17,17 @@ trait TestService extends Service {
   }
 }
 
+case class LookupQuery(value: String)
+
+object LookupQuery {
+  implicit val format: Format[LookupQuery] = Json.format[LookupQuery]
+}
+
+
 
 case class ResultData(uploadId: String, length: Long)
 
 object ResultData {
   implicit val format: Format[ResultData] = Json.format[ResultData]
 }
+
