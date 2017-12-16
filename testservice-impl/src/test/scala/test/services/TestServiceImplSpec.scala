@@ -31,10 +31,12 @@ class TestServiceImplSpec extends AsyncWordSpec with MustMatchers {
 
       //string 'fail' should throw an exception
       val eventualSource2 = client.test().invoke(LookupQuery("fail"))
+      val streamResult = eventualSource2.flatMap(_.runWith(Sink.ignore))(system.dispatcher)
 
-      ScalaFutures.whenReady(eventualSource2.failed, Timeout(Span(5, Seconds))) { e =>
+      ScalaFutures.whenReady(streamResult.failed, Timeout(Span(5, Seconds))) { e =>
         e mustBe a[Throwable]
       }
+
 
     }
   }
